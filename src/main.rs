@@ -1,3 +1,4 @@
+mod browser;
 mod cdp;
 mod text;
 use anyhow::{Context, Result, bail};
@@ -29,7 +30,12 @@ struct Cli {
 }
 #[derive(Subcommand)]
 enum Command {
-    /// 只检查连接和 Gemini 就绪状态，不提交文字
+    /// 打开专用 Edge 等待用户登录，验证模型后正常退出并保留登录
+    Login {
+        #[arg(long, default_value_t = 900)]
+        timeout: u64,
+    },
+    /// 检查专用 Edge 连接；完成后退出，不提交文字
     Doctor,
     /// 查看网页当前可用的模型及思考程度
     Models,
@@ -355,11 +361,47 @@ fn main() -> Result<()> {
     let profile = cli
         .profile
         .or_else(|| config["profile"].as_str().map(PathBuf::from))
-        .unwrap_or(env_path("LOCALAPPDATA")?.join("Microsoft/Edge/User Data"));
-    let mut cdp = Cdp::connect(&profile)?;
-    match cli.command {
+        .unwrap_or(env_path("LOCALAPPDATA")?.join("Programs/AskBridge/edge-profile"));
+    let mut browser = browser::Browser::start(&profile)?;
+    let result = execute(cli.command, &config, &mut browser.cdp, started);
+    if result.is_ok() {
+        browser.close()?;
+        eprintln!("专用 Edge 已正常退出，登录数据保留。");
+    } else {
+        eprintln!("专用 Edge 已保留供登录或恢复；下一次命令会复用它，不自动重新发送。");
+    }
+    result
+}
+fn execute(command: Command, config: &Value, mut cdp: &mut Cdp, started: Instant) -> Result<()> {
+    match command {
+        Command::Login { timeout } => {
+            let target = cdp.create("https://gemini.google.com/app")?;
+            let deadline = Instant::now() + Duration::from_secs(timeout);
+            eprintln!("请在新开的专用 Edge 窗口中登录 Gemini。只检查 Gemini 就绪状态，不读取登录凭据。");
+            loop {
+                if let Ok(session) = cdp.attach(&target) {
+                    let _ = cdp.call("Page.bringToFront", json!({}), Some(&session), 5);
+                    if let Ok(status) = state(cdp, &session) {
+                        if status["ready"] == true {
+                            let model = field(config, "model")?;
+                            let reasoning = config["reasoning"].as_str().unwrap_or("");
+                            let selected = select(cdp, &session, model, reasoning)?;
+                            println!("{}", json!({"loggedIn":true,"selectedModel":selected}));
+                            break;
+                        }
+                    }
+                }
+                if Instant::now() >= deadline { bail!("等待登录超时；窗口已保留，完成登录后重新执行 login 验证"); }
+                thread::sleep(Duration::from_secs(2));
+            }
+        }
         Command::Doctor => {
             let version = cdp.call("Browser.getVersion", json!({}), None, 15)?;
+            if cdp.tabs()?.is_empty() {
+                let target = cdp.create("https://gemini.google.com/app")?;
+                let session = cdp.attach(&target)?;
+                wait_state(cdp, &session, |s| s["ready"] == true)?;
+            }
             let mut states = Vec::new();
             for tab in cdp.tabs()? {
                 let session = cdp.attach(field(&tab, "targetId")?)?;
@@ -379,6 +421,7 @@ fn main() -> Result<()> {
                 None => cdp.create("https://gemini.google.com/app")?,
             };
             let session = cdp.attach(&target)?;
+            cdp.call("Page.bringToFront", json!({}), Some(&session), 15)?;
             let opened = open_picker(&mut cdp, &session)?;
             println!("{}", serde_json::to_string_pretty(&opened)?);
             escape(&mut cdp, &session)?;

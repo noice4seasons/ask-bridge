@@ -34,10 +34,13 @@ pub fn endpoint(profile: &Path) -> Result<(SocketAddr, String)> {
 
 impl Cdp {
     pub fn connect(profile: &Path) -> Result<Self> {
+        Self::connect_with_timeout(profile, 120)
+    }
+    pub fn connect_with_timeout(profile: &Path, handshake_timeout: u64) -> Result<Self> {
         let (address, url) = endpoint(profile)?;
         let stream = TcpStream::connect_timeout(&address, Duration::from_secs(5))
             .context("无法连接 Edge，请确认它正在运行且调试仍开启")?;
-        stream.set_read_timeout(Some(Duration::from_secs(120)))?;
+        stream.set_read_timeout(Some(Duration::from_secs(handshake_timeout)))?;
         stream.set_write_timeout(Some(Duration::from_secs(15)))?;
         let (socket, _) = client(url.as_str(), stream).map_err(|e| {
             anyhow::anyhow!("Edge 调试握手失败：{e}；请查看 Edge 是否需要允许本次调试连接")
