@@ -1,0 +1,35 @@
+name: Build Windows executable
+on:
+  workflow_dispatch:
+  push:
+    branches: [gemini-edge-lite]
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Bootstrap formatting and lockfile
+        run: |
+          cargo fmt --all
+          cargo generate-lockfile
+      - name: Test
+        run: cargo test --locked
+      - name: Build
+        run: cargo build --release --locked
+      - name: Hash executable
+        shell: pwsh
+        run: (Get-FileHash target/release/ask-bridge.exe -Algorithm SHA256).Hash.ToLower() | Set-Content target/release/ask-bridge.exe.sha256 -Encoding utf8
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ask-bridge-windows-x64
+          path: |
+            target/release/ask-bridge.exe
+            target/release/ask-bridge.exe.sha256
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: formatted-source
+          path: |
+            src/*.rs
+            Cargo.lock
