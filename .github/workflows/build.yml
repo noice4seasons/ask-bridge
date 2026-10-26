@@ -10,10 +10,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - name: Bootstrap formatting and lockfile
-        run: |
-          cargo fmt --all
-          cargo generate-lockfile
+      - name: Check formatting
+        run: cargo fmt --all -- --check
       - name: Test
         run: cargo test --locked
       - name: Build

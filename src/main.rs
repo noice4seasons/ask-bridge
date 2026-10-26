@@ -153,6 +153,7 @@ fn open_picker(cdp: &mut Cdp, session: &str) -> Result<Value> {
     })
 }
 fn select(cdp: &mut Cdp, session: &str, model: &str, reasoning: &str) -> Result<Value> {
+    cdp.call("Page.bringToFront", json!({}), Some(session), 15)?;
     open_picker(cdp, session)?;
     click(cdp, session, "model", model)?;
     let selected = wait_state(cdp, session, |s| {
@@ -272,8 +273,15 @@ impl Work {
         // 只关闭本工具创建、仍停留在本次对话的标签，避免后台页面累积。
         if self.data["ownsTarget"] == true {
             if let Ok(tabs) = cdp.tabs() {
-                if tabs.iter().any(|tab| tab["targetId"] == self.data["targetId"] && tab["url"] == self.data["url"]) {
-                    let closed = cdp.call("Target.closeTarget", json!({"targetId":self.data["targetId"]}), None, 15);
+                if tabs.iter().any(|tab| {
+                    tab["targetId"] == self.data["targetId"] && tab["url"] == self.data["url"]
+                }) {
+                    let closed = cdp.call(
+                        "Target.closeTarget",
+                        json!({"targetId":self.data["targetId"]}),
+                        None,
+                        15,
+                    );
                     self.data["tabClosed"] = json!(closed.is_ok());
                     self.save()?;
                 }

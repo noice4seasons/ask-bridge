@@ -39,8 +39,9 @@ impl Cdp {
             .context("无法连接 Edge，请确认它正在运行且调试仍开启")?;
         stream.set_read_timeout(Some(Duration::from_secs(120)))?;
         stream.set_write_timeout(Some(Duration::from_secs(15)))?;
-        let (socket, _) =
-            client(url.as_str(), stream).map_err(|e| anyhow::anyhow!("Edge 调试握手失败：{e}；请查看 Edge 是否需要允许本次调试连接"))?;
+        let (socket, _) = client(url.as_str(), stream).map_err(|e| {
+            anyhow::anyhow!("Edge 调试握手失败：{e}；请查看 Edge 是否需要允许本次调试连接")
+        })?;
         Ok(Self {
             socket,
             sequence: 0,

@@ -25,7 +25,13 @@ function pageState({ action = 'status', model } = {}) {
     if (!editor || editor.innerText.trim()) throw new Error('编辑器未就绪或已有草稿，未覆盖。');
     editor.focus(); return { focused: document.activeElement === editor };
   }
-  if (action === 'draft') return { text: editor?.innerText || '', responses: responses.length };
+  if (action === 'draft') {
+    // Quill 的段落样式会让 innerText 插入额外空行；按实际段落边界还原输入。
+    const blocks = editor ? [...editor.children] : [];
+    const plain = node => node.nodeType === 3 ? node.textContent : node.nodeName === 'BR' ? '\n' : [...node.childNodes].map(plain).join('');
+    const text = blocks.length && blocks.every(n=>n.tagName==='P') ? blocks.map(n=>n.innerHTML==='<br>' ? '' : plain(n)).join('\n') : editor?.innerText || '';
+    return { text, responses: responses.length };
+  }
   if (action === 'send') target = [...document.querySelectorAll('button')].find(e => visible(e) && /^(Send message|Send|发送消息|发送|傳送訊息|傳送|提交)$/i.test(e.getAttribute('aria-label') || '')) || document.querySelector('button[data-test-id="send-button"]');
   if (!visible(target) || target.disabled || target.getAttribute('aria-disabled') === 'true') throw new Error('操作控件未就绪：' + action);
   const rect = target.getBoundingClientRect();
