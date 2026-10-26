@@ -33,9 +33,6 @@ pub fn endpoint(profile: &Path) -> Result<(SocketAddr, String)> {
 }
 
 impl Cdp {
-    pub fn connect(profile: &Path) -> Result<Self> {
-        Self::connect_with_timeout(profile, 120)
-    }
     pub fn connect_with_timeout(profile: &Path, handshake_timeout: u64) -> Result<Self> {
         let (address, url) = endpoint(profile)?;
         let stream = TcpStream::connect_timeout(&address, Duration::from_secs(5))

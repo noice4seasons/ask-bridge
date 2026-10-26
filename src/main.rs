@@ -376,11 +376,15 @@ fn execute(command: Command, config: &Value, mut cdp: &mut Cdp, started: Instant
     match command {
         Command::Login { timeout } => {
             let target = cdp.create("https://gemini.google.com/app")?;
+            if let Ok(session) = cdp.attach(&target) {
+                cdp.call("Page.bringToFront", json!({}), Some(&session), 5)?;
+            }
             let deadline = Instant::now() + Duration::from_secs(timeout);
-            eprintln!("请在新开的专用 Edge 窗口中登录 Gemini。只检查 Gemini 就绪状态，不读取登录凭据。");
+            eprintln!(
+                "请在新开的专用 Edge 窗口中登录 Gemini。只检查 Gemini 就绪状态，不读取登录凭据。"
+            );
             loop {
                 if let Ok(session) = cdp.attach(&target) {
-                    let _ = cdp.call("Page.bringToFront", json!({}), Some(&session), 5);
                     if let Ok(status) = state(cdp, &session) {
                         if status["ready"] == true {
                             let model = field(config, "model")?;
@@ -391,7 +395,9 @@ fn execute(command: Command, config: &Value, mut cdp: &mut Cdp, started: Instant
                         }
                     }
                 }
-                if Instant::now() >= deadline { bail!("等待登录超时；窗口已保留，完成登录后重新执行 login 验证"); }
+                if Instant::now() >= deadline {
+                    bail!("等待登录超时；窗口已保留，完成登录后重新执行 login 验证");
+                }
                 thread::sleep(Duration::from_secs(2));
             }
         }

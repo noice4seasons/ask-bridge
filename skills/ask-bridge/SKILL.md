@@ -17,4 +17,4 @@ Windows 命令为 `$env:USERPROFILE\.local\bin\ask-bridge.exe`，优先用绝对
 
 超时或断线只用 `get --job "工作目录"` 恢复取回，不自动重复发送；`prepared` 状态未提交，需先排除模型或登录问题。输出文件不覆盖。`doctor` 仅检查连接；`models` 查看当前网页模型；`config --model "实际标签" --reasoning "实际标签"` 保存选项。
 
-无需 Node/npx/MCP/常驻服务。用户自行开启 Edge 远程调试、允许连接并登录；不读取凭据，不关闭其浏览器。原稿和记录位于 `%LOCALAPPDATA%\Programs\AskBridge\jobs`，配置位于 `%USERPROFILE%\.config\ask-bridge-lite\config.json`。
+无需 Node/npx/MCP/常驻服务。自动启动现有 Edge 的专用持久化目录，成功后退出该专用实例，保留登录；不关闭日常 Edge。首次或登录失效时执行 `login`，请用户在专用窗口自行登录，不读取凭据。专用目录为 `%LOCALAPPDATA%\Programs\AskBridge\edge-profile`，无需用户反复允许调试；失败时保留窗口，下次命令复用。原稿和记录位于 `%LOCALAPPDATA%\Programs\AskBridge\jobs`，配置位于 `%USERPROFILE%\.config\ask-bridge-lite\config.json`。
