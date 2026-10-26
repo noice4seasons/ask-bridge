@@ -16,7 +16,7 @@ pub struct Cdp {
 
 pub fn endpoint(profile: &Path) -> Result<(SocketAddr, String)> {
     let text = fs::read_to_string(profile.join("DevToolsActivePort"))
-        .context("无法读取 Edge 调试连接；请在 edge://inspect 开启远程调试")?;
+        .context("无法读取专用 Edge 调试端点；请检查专用窗口是否已正常启动")?;
     let mut lines = text.lines();
     let port: u16 = lines.next().context("缺少端口")?.trim().parse()?;
     let route = lines.next().context("缺少浏览器端点")?.trim();
@@ -36,11 +36,11 @@ impl Cdp {
     pub fn connect_with_timeout(profile: &Path, handshake_timeout: u64) -> Result<Self> {
         let (address, url) = endpoint(profile)?;
         let stream = TcpStream::connect_timeout(&address, Duration::from_secs(5))
-            .context("无法连接 Edge，请确认它正在运行且调试仍开启")?;
+            .context("无法连接专用 Edge；请确认它尚未退出")?;
         stream.set_read_timeout(Some(Duration::from_secs(handshake_timeout)))?;
         stream.set_write_timeout(Some(Duration::from_secs(15)))?;
         let (socket, _) = client(url.as_str(), stream).map_err(|e| {
-            anyhow::anyhow!("Edge 调试握手失败：{e}；请查看 Edge 是否需要允许本次调试连接")
+            anyhow::anyhow!("专用 Edge 连接失败：{e}；请检查浏览器启动状态及本机连接限制")
         })?;
         Ok(Self {
             socket,
