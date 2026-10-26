@@ -380,7 +380,12 @@ fn execute(command: Command, config: &Value, mut cdp: &mut Cdp, started: Instant
             let target = cdp.create("https://gemini.google.com/app")?;
             let session = cdp.attach(&target)?;
             wait_state(cdp, &session, |s| s["ready"] == true)?;
-            let selected = select(cdp, &session, field(config, "model")?, config["reasoning"].as_str().unwrap_or(""))?;
+            let selected = select(
+                cdp,
+                &session,
+                field(config, "model")?,
+                config["reasoning"].as_str().unwrap_or(""),
+            )?;
             println!("{}", json!({"loggedIn":true,"selectedModel":selected}));
         }
         Command::Doctor => {
