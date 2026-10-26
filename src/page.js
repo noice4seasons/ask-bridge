@@ -1,4 +1,5 @@
 function pageState({ action = 'status', model } = {}) {
+  if (action === 'status' && location.href === 'about:blank') return {ready:false,authRequired:false,options:[],reasoningOptions:[]};
   if (location.hostname !== 'gemini.google.com') throw new Error('页面已离开 Gemini，请自行完成登录。');
   const visible = el => !!el && el.getBoundingClientRect().width > 0 && el.getBoundingClientRect().height > 0 && getComputedStyle(el).visibility !== 'hidden';
   const editor = [...document.querySelectorAll('[role="textbox"][contenteditable="true"],rich-textarea [contenteditable="true"],.ql-editor[contenteditable="true"]')].find(visible);
