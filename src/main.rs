@@ -30,11 +30,10 @@ struct Cli {
 }
 #[derive(Subcommand)]
 enum Command {
-    /// 打开专用 Edge 等待用户登录，验证模型后正常退出并保留登录
-    Login {
-        #[arg(long, default_value_t = 900)]
-        timeout: u64,
-    },
+    /// 显示普通 Edge 手动登录步骤，不连接或检查登录页面
+    Login,
+    /// 登录完成并关闭普通窗口后，验证 Gemini 和配置模型
+    CheckLogin,
     /// 检查专用 Edge 连接；完成后退出，不提交文字
     Doctor,
     /// 查看网页当前可用的模型及思考程度
@@ -362,6 +361,9 @@ fn main() -> Result<()> {
         .profile
         .or_else(|| config["profile"].as_str().map(PathBuf::from))
         .unwrap_or(env_path("LOCALAPPDATA")?.join("Programs/AskBridge/edge-profile"));
+    if matches!(cli.command, Command::Login) {
+        return browser::login_instructions(&profile);
+    }
     let mut browser = browser::Browser::start(&profile)?;
     let result = execute(cli.command, &config, &mut browser.cdp, started);
     if result.is_ok() {
@@ -374,32 +376,12 @@ fn main() -> Result<()> {
 }
 fn execute(command: Command, config: &Value, mut cdp: &mut Cdp, started: Instant) -> Result<()> {
     match command {
-        Command::Login { timeout } => {
+        Command::CheckLogin => {
             let target = cdp.create("https://gemini.google.com/app")?;
-            if let Ok(session) = cdp.attach(&target) {
-                cdp.call("Page.bringToFront", json!({}), Some(&session), 5)?;
-            }
-            let deadline = Instant::now() + Duration::from_secs(timeout);
-            eprintln!(
-                "请在新开的专用 Edge 窗口中登录 Gemini。只检查 Gemini 就绪状态，不读取登录凭据。"
-            );
-            loop {
-                if let Ok(session) = cdp.attach(&target) {
-                    if let Ok(status) = state(cdp, &session) {
-                        if status["ready"] == true {
-                            let model = field(config, "model")?;
-                            let reasoning = config["reasoning"].as_str().unwrap_or("");
-                            let selected = select(cdp, &session, model, reasoning)?;
-                            println!("{}", json!({"loggedIn":true,"selectedModel":selected}));
-                            break;
-                        }
-                    }
-                }
-                if Instant::now() >= deadline {
-                    bail!("等待登录超时；窗口已保留，完成登录后重新执行 login 验证");
-                }
-                thread::sleep(Duration::from_secs(2));
-            }
+            let session = cdp.attach(&target)?;
+            wait_state(cdp, &session, |s| s["ready"] == true)?;
+            let selected = select(cdp, &session, field(config, "model")?, config["reasoning"].as_str().unwrap_or(""))?;
+            println!("{}", json!({"loggedIn":true,"selectedModel":selected}));
         }
         Command::Doctor => {
             let version = cdp.call("Browser.getVersion", json!({}), None, 15)?;
@@ -554,7 +536,7 @@ fn execute(command: Command, config: &Value, mut cdp: &mut Cdp, started: Instant
             }
         }
         Command::SelfTest => self_test(&mut cdp)?,
-        Command::Config { .. } => unreachable!(),
+        Command::Config { .. } | Command::Login => unreachable!(),
     }
     Ok(())
 }

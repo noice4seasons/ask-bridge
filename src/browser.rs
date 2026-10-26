@@ -83,6 +83,14 @@ fn reachable(profile: &Path) -> bool {
     })
 }
 
+pub fn login_instructions(profile: &Path) -> Result<()> {
+    let (profile, _lease) = prepare(profile)?;
+    let edge = edge_executable()?;
+    println!("请先关闭工具专用 Edge（保留日常 Edge），然后在 Win+R 运行以下命令，自行登录 Gemini；成功后关闭专用窗口，再执行 ask-bridge check-login。登录期间不启用调试或读取页面。");
+    println!("\"{}\" --user-data-dir=\"{}\" https://gemini.google.com/app", edge.display(), profile.display());
+    Ok(())
+}
+
 impl Browser {
     pub fn start(profile: &Path) -> Result<Self> {
         let (profile, lease) = prepare(profile)?;
@@ -119,7 +127,7 @@ impl Browser {
             while !reachable(&profile) {
                 if let Some(process) = child.as_mut() {
                     if let Some(status) = process.try_wait()? {
-                        bail!("专用 Edge 提前退出：{status}");
+                        bail!("专用 Edge 提前退出：{status}；若普通登录窗口仍打开，请先关闭它再重试");
                     }
                 }
                 if Instant::now() >= deadline {

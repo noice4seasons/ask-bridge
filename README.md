@@ -8,11 +8,13 @@ Windows x64 单个 Rust 可执行文件，按需启动已安装的 Edge，使用
 
 从此 fork 的 Release 下载 `ask-bridge.exe` 和 SHA-256 文件，校验后放到用户工具目录。更新时先备份旧文件再替换，不执行上游更新器。
 
-首次执行 `login`，在新开的专用 Edge 窗口中自行登录 Gemini。程序只检查 Gemini 就绪状态，不读取 Cookie、密码或会话数据库，不复制日常 profile。登录成功并验证配置模型后正常退出，后续按需启动时复用该目录。无需在日常 Edge 的 `edge://inspect` 开启调试。
+首次执行 `login` 查看普通 Edge 的启动命令；先关闭工具专用窗口，再手动打开不带调试或自动化参数的普通窗口，自行登录 Gemini。程序只检查 Gemini 就绪状态，不读取 Cookie、密码或会话数据库，不复制日常 profile。登录成功后自行关闭该专用窗口，让登录状态落盘，再执行 `check-login` 验证模型；后续按需启动时复用该目录。Google 可能拒绝自动化环境中的账号登录，因此登录步骤不由 CDP 控制。无需在日常 Edge 的 `edge://inspect` 开启调试。
 
 ```powershell
 ask-bridge config --model "4 Argon" --reasoning High
 ask-bridge login
+# 按输出步骤手动登录并关闭专用窗口后：
+ask-bridge check-login
 ask-bridge doctor
 ask-bridge models
 ask-bridge run --input draft.md --mode notice --output polished.md
