@@ -10,7 +10,8 @@ function pageState({ action = 'status', model } = {}) {
   const reasoningItems = [...document.querySelectorAll('[role="menuitem"]')].filter(visible).filter(e=>/^(Low|Medium|High)$/.test(label(e)));
   const reasoningOptions = reasoningItems.map(label);
   const selectedReasoning = reasoningItems.filter(e=>e.classList.contains('selected')).map(label)[0] || null;
-  const authRequired = [...document.querySelectorAll('a[href*="accounts.google.com"]')].some(e => visible(e) && /^(Sign in|登录|登录)$/i.test(e.innerText.trim()));
+  const signIn = /^(Sign in(?: with Google)?|登录(?: Google)?|登入)$/i;
+  const authRequired = [...document.querySelectorAll('a,button')].some(e => visible(e) && (signIn.test(e.innerText.trim()) || signIn.test(e.getAttribute('aria-label') || '')));
   const responses = document.querySelectorAll('model-response');
   if (action === 'status') return { ready: !!editor && !!picker && !authRequired, authRequired, model: picker?.innerText.trim() || null, options, reasoningOptions, selectedReasoning, responses: responses.length, url: location.origin + location.pathname };
   let target;
