@@ -533,6 +533,9 @@ fn self_test(cdp: &mut Cdp) -> Result<()> {
         );
         let markdown = cdp.eval(session, &script, json!({}), 15)?;
         let markdown = markdown.as_str().context("无提取结果")?;
+        if markdown.contains("界面标签不应提取") {
+            bail!("提取了代码块界面标签");
+        }
         for expected in [
             "# 中文标题",
             "**必须保留**",

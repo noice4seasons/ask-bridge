@@ -5,6 +5,7 @@ function elementToMarkdown(root) {
     if (node.nodeType === 3) return node.textContent;
     if (node.nodeType !== 1) return '';
     const tag = node.tagName.toLowerCase();
+    if (node.classList.contains('code-block-decoration')) return '';
     if (['button', 'style', 'script', 'svg'].includes(tag) || node.getAttribute('aria-hidden') === 'true') return '';
     if (tag === 'pre') {
       const code = node.querySelector('code') || node;
