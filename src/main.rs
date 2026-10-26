@@ -269,6 +269,16 @@ impl Work {
                 .context("输出文件已存在或不可写；工作结果已保留")?;
             file.write_all(result.as_bytes())?;
         }
+        // 只关闭本工具创建、仍停留在本次对话的标签，避免后台页面累积。
+        if self.data["ownsTarget"] == true {
+            if let Ok(tabs) = cdp.tabs() {
+                if tabs.iter().any(|tab| tab["targetId"] == self.data["targetId"] && tab["url"] == self.data["url"]) {
+                    let closed = cdp.call("Target.closeTarget", json!({"targetId":self.data["targetId"]}), None, 15);
+                    self.data["tabClosed"] = json!(closed.is_ok());
+                    self.save()?;
+                }
+            }
+        }
         println!(
             "{}",
             serde_json::to_string_pretty(
@@ -403,6 +413,7 @@ fn main() -> Result<()> {
             let result = (|| -> Result<()> {
                 let target = cdp.create("https://gemini.google.com/app")?;
                 work.data["targetId"] = json!(target);
+                work.data["ownsTarget"] = json!(true);
                 work.save()?;
                 let session = cdp.attach(&target)?;
                 work.data["selectedModel"] = select(&mut cdp, &session, &model, &reasoning)?;
@@ -465,6 +476,9 @@ fn main() -> Result<()> {
                         bail!("原分页面已关闭，且没有可恢复的对话网址");
                     }
                     target = cdp.create(url)?;
+                    work.data["targetId"] = json!(target);
+                    work.data["ownsTarget"] = json!(true);
+                    work.save()?;
                 }
                 let session = cdp.attach(&target)?;
                 wait_state(&mut cdp, &session, |s| s["ready"] == true)?;
