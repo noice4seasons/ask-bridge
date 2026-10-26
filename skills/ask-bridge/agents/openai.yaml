@@ -1,0 +1,6 @@
+interface:
+  display_name: "Ask Bridge"
+  short_description: "通过现有 Edge 登录按需调用 Gemini，保存中文与 Markdown 结果"
+  default_prompt: "使用 $ask-bridge 将我指定的文字交给 Gemini 校对并取回结果。"
+policy:
+  allow_implicit_invocation: false

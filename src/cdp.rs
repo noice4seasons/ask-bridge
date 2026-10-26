@@ -35,7 +35,7 @@ impl Cdp {
         loop {
             match self.socket.read().context("Edge 连接中断或等待超时；不会自动重发请求")? {
                 Message::Text(text) => {
-                    let response: Value = serde_json::from_str(&text)?;
+                    let mut response: Value = serde_json::from_str(&text)?;
                     if response["id"].as_u64() == Some(id) {
                         if !response["error"].is_null() { bail!("{}", response["error"]["message"]); }
                         return Ok(response["result"].take());
